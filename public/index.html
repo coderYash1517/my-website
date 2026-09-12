@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Travel10 — Ride Booking</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f5f6f7;color:#151515}
+nav{height:70px;background:#fff;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;padding:0 6%;position:sticky;top:0;z-index:20}
+.logo{font-size:28px;font-weight:900}.logo b{color:#ffd400}.login{background:#111;color:#fff;border:0;border-radius:9px;padding:11px 20px;font-weight:700}
+.hero{padding:35px 6%;background:#111;color:#fff}.hero h1{font-size:44px;margin:0 0 8px}.hero p{color:#bbb;margin:0}
+.main{padding:28px 6%;display:grid;grid-template-columns:430px 1fr;gap:22px}.panel{background:#fff;border-radius:18px;padding:22px;box-shadow:0 8px 30px #00000012}
+.input{display:flex;gap:10px;align-items:center;border:1px solid #ddd;padding:12px;border-radius:10px;margin:9px 0}.input input{border:0;outline:0;width:100%}
+.vehicles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}.vehicle{border:1px solid #ddd;border-radius:11px;padding:12px 5px;text-align:center;background:#fff}.vehicle.active{border:2px solid #111;background:#fff7c4}.ico{font-size:27px}.vehicle strong,.vehicle small{display:block}.vehicle small{color:#777;font-size:11px}
+.fare{display:flex;justify-content:space-between;background:#f4f4f4;padding:12px;border-radius:10px;margin-bottom:12px}.fare b{font-size:19px}
+.primary{width:100%;border:0;border-radius:10px;padding:14px;background:#ffd400;font-weight:900}.secondary{border:1px solid #ddd;background:#fff;border-radius:9px;padding:10px 13px}
+#map{height:570px;border-radius:18px;overflow:hidden;position:relative;z-index:1}.msg{margin-top:10px;font-size:13px}.success{color:#087f3e}.error{color:#c62828}
+.status{margin-top:14px;border-top:1px solid #eee;padding-top:15px}.status strong{font-size:18px}.badge{display:inline-block;background:#eee;border-radius:20px;padding:5px 10px;font-size:12px}
+.section{padding:35px 6%}.section h2{margin-bottom:15px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}.card{background:#fff;padding:20px;border-radius:15px}.card p{color:#666;font-size:14px}
+.modal{display:none;position:fixed;inset:0;background:#0009;z-index:9999;align-items:center;justify-content:center;padding:20px}.modalBox{background:#fff;width:360px;border-radius:16px;padding:24px;position:relative;z-index:10000}.close{position:absolute;right:16px;top:10px;font-size:25px;cursor:pointer}.modalBox input{width:100%;padding:12px;margin:7px 0;border:1px solid #ddd;border-radius:9px}.modalBox button{width:100%;padding:12px;background:#ffd400;border:0;border-radius:9px;font-weight:800;margin-top:6px}
+footer{background:#111;color:#aaa;padding:28px 6%;font-size:13px}
+@media(max-width:900px){.main{grid-template-columns:1fr}.cards{grid-template-columns:1fr}.hero h1{font-size:34px}#map{height:400px}}
+</style>
+</head>
+<body>
+<nav><div class="logo"><b>Travel</b>10</div><button class="login" onclick="openLogin()">Login</button></nav>
+<section class="hero"><h1>Move your way.</h1><p>Book a Bike, Auto or Car with Travel10.</p></section>
+
+<div class="main">
+<div class="panel">
+<h2>Book a ride</h2>
+<div class="input">📍 <input id="pickup" placeholder="Pickup location"></div>
+<div class="input">🏁 <input id="drop" placeholder="Destination"></div>
+<button class="secondary" onclick="useLocation()">📍 Use my current location</button>
+<div class="vehicles">
+<div class="vehicle active" onclick="choose(this,'Bike',10)">🏍️<strong>Bike</strong><small>₹10/km</small></div>
+<div class="vehicle" onclick="choose(this,'Auto',15)">🛺<strong>Auto</strong><small>₹15/km</small></div>
+<div class="vehicle" onclick="choose(this,'Car',20)">🚗<strong>Car</strong><small>₹20/km</small></div>
+</div>
+<div class="fare"><span>Estimated fare</span><b id="fare">—</b></div>
+<button class="primary" onclick="findRoute()">Find route & fare</button>
+<button class="primary" style="margin-top:9px" onclick="bookRide()">Book ride</button>
+<div id="msg" class="msg"></div>
+<div id="booking" class="status" style="display:none"></div>
+</div>
+<div id="map"></div>
+</div>
+
+<section class="section">
+<h2>Travel10 services</h2>
+<div class="cards">
+<div class="card">🏍️ <h3>Bike</h3><p>Fast and affordable city rides.</p></div>
+<div class="card">🛺 <h3>Auto</h3><p>Comfortable everyday transportation.</p></div>
+<div class="card">🚗 <h3>Car</h3><p>More space for you and your family.</p></div>
+</div>
+</section>
+
+<footer>© 2026 Travel10 — Working MVP prototype.</footer>
+
+<div class="modal" id="modal"><div class="modalBox"><span class="close" onclick="closeLogin()">×</span><h2>Login</h2><p>Demo account is saved in the Travel10 database.</p><input id="name" placeholder="Full name"><input id="phone" placeholder="Mobile number"><button onclick="login()">Continue</button><div id="loginMsg" class="msg"></div></div></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let map=L.map('map').setView([20.5937,78.9629],5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors'}).addTo(map);
+let pickupMarker=null,dropMarker=null,routeLine=null;
+let pickupCoords=null,dropCoords=null,vehicle='Bike',rate=10,userId=null;
+
+function choose(el,v,r){document.querySelectorAll('.vehicle').forEach(x=>x.classList.remove('active'));el.classList.add('active');vehicle=v;rate=r;updateFare();}
+function updateFare(){if(!pickupCoords||!dropCoords)return;let km=distance(pickupCoords[0],pickupCoords[1],dropCoords[0],dropCoords[1]);let base=rate===10?30:rate===15?50:80;let fare=base+km*rate;document.getElementById('fare').textContent='₹'+Math.round(fare)+' (~'+km.toFixed(1)+' km)';}
+function distance(a,b,c,d){const R=6371,rad=x=>x*Math.PI/180;let x=rad(c-a),y=rad(d-b);let q=Math.sin(x/2)**2+Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(y/2)**2;return R*2*Math.atan2(Math.sqrt(q),Math.sqrt(1-q));}
+async function geocode(q){let url='https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q);let r=await fetch(url);let data=await r.json();if(!data[0])throw new Error('Location not found: '+q);return [+data[0].lat,+data[0].lon];}
+async function findRoute(){
+ const p=document.getElementById('pickup').value.trim(),d=document.getElementById('drop').value.trim(),msg=document.getElementById('msg');
+ if(!p||!d){msg.className='msg error';msg.textContent='Enter pickup and destination first.';return;}
+ msg.className='msg';msg.textContent='Finding locations…';
+ try{
+  pickupCoords=await geocode(p);dropCoords=await geocode(d);
+  drawMarkers();updateFare();
+  const url=`https://router.project-osrm.org/route/v1/driving/${pickupCoords[1]},${pickupCoords[0]};${dropCoords[1]},${dropCoords[0]}?overview=full&geometries=geojson`;
+  const rr=await fetch(url), data=await rr.json();
+  if(data.routes?.[0]){
+   const km=data.routes[0].distance/1000;const base=rate===10?30:rate===15?50:80;document.getElementById('fare').textContent='₹'+Math.round(base+km*rate)+' (~'+km.toFixed(1)+' km)';
+   if(routeLine)map.removeLayer(routeLine);routeLine=L.geoJSON(data.routes[0].geometry).addTo(map);map.fitBounds(routeLine.getBounds(),{padding:[25,25]});
+   msg.className='msg success';msg.textContent='Route found. You can book now.';
+  }
+ }catch(e){msg.className='msg error';msg.textContent=e.message;}
+}
+function drawMarkers(){
+ if(pickupMarker)map.removeLayer(pickupMarker);if(dropMarker)map.removeLayer(dropMarker);
+ pickupMarker=L.marker(pickupCoords).addTo(map).bindPopup('Pickup').openPopup();
+ dropMarker=L.marker(dropCoords).addTo(map).bindPopup('Destination');
+ map.fitBounds(L.latLngBounds([pickupCoords,dropCoords]),{padding:[30,30]});
+}
+function useLocation(){
+ if(!navigator.geolocation){alert('Geolocation is not supported by this browser.');return;}
+ document.getElementById('msg').textContent='Getting your location…';
+ navigator.geolocation.getCurrentPosition(pos=>{
+  pickupCoords=[pos.coords.latitude,pos.coords.longitude];
+  document.getElementById('pickup').value='My current location';
+  if(pickupMarker)map.removeLayer(pickupMarker);
+  pickupMarker=L.marker(pickupCoords).addTo(map).bindPopup('You are here').openPopup();
+  map.setView(pickupCoords,15);
+  document.getElementById('msg').className='msg success';document.getElementById('msg').textContent='Current location set as pickup.';
+ },()=>{document.getElementById('msg').className='msg error';document.getElementById('msg').textContent='Location permission was denied.';});
+}
+async function bookRide(){
+ if(!pickupCoords||!dropCoords){await findRoute();if(!pickupCoords||!dropCoords)return;}
+ const km=distance(pickupCoords[0],pickupCoords[1],dropCoords[0],dropCoords[1]);const base=rate===10?30:rate===15?50:80;const fare=Math.round(base+km*rate);
+ const msg=document.getElementById('msg');msg.textContent='Creating booking…';
+ try{
+  const r=await fetch('/api/rides',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId,vehicle,pickup:document.getElementById('pickup').value,destination:document.getElementById('drop').value,pickupLat:pickupCoords[0],pickupLng:pickupCoords[1],dropLat:dropCoords[0],dropLng:dropCoords[1],distanceKm:km,fare})});
+  const data=await r.json();if(!r.ok)throw new Error(data.error);
+  document.getElementById('booking').style.display='block';document.getElementById('booking').innerHTML=`<span class="badge">SEARCHING</span><br><strong>${data.booking_code}</strong><br>${vehicle} · ₹${data.fare} · ${data.distance_km} km`;
+  msg.className='msg success';msg.textContent='Booking created successfully!';
+ }catch(e){msg.className='msg error';msg.textContent=e.message;}
+}
+function openLogin(){document.getElementById('modal').style.display='flex'}function closeLogin(){document.getElementById('modal').style.display='none'}
+async function login(){
+ const name=document.getElementById('name').value.trim(),phone=document.getElementById('phone').value.trim();
+ if(!name||!phone){document.getElementById('loginMsg').textContent='Enter name and mobile number.';return}
+ const r=await fetch('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone})});const u=await r.json();
+ if(r.ok){userId=u.id;closeLogin();document.querySelector('.login').textContent=name.split(' ')[0];}else document.getElementById('loginMsg').textContent=u.error;
+}
+</script>
+</body>
+</html>
