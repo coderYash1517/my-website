@@ -1,0 +1,13 @@
+{
+  "name": "travel10-working",
+  "version": "1.0.0",
+  "description": "Travel10 ride booking MVP",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "better-sqlite3": "^12.4.1"
+  }
+}
